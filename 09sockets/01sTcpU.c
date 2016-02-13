@@ -1,0 +1,60 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <string.h>
+       
+#define SERVER_IP "127.0.0.1"
+#define SERVER_PORT 5000
+
+int main(int argc,char** argv)
+{
+  int connectionSock,serverSock,i;
+  socklen_t sockLen;
+  struct sockaddr_in sAddr,cAddr;
+  char str[100];
+
+  if((serverSock=socket(PF_INET,SOCK_STREAM,0))==-1)
+  {
+    printf("error al crear el socket\n");
+    exit(-1);
+  }
+  sAddr.sin_family=AF_INET;
+  sAddr.sin_addr.s_addr=inet_addr(SERVER_IP);
+  sAddr.sin_port=htons(SERVER_PORT);
+  if(bind(serverSock,(struct sockaddr*)&sAddr,sizeof(sAddr))==-1)
+  {
+    perror("bind\n");
+    exit(-1);
+  }
+  if(listen(serverSock,5)==-1)
+  {
+    perror("listen\n");
+    exit(-1);
+  }
+
+  sockLen=sizeof(cAddr);
+  if((connectionSock=accept(serverSock,(struct sockaddr*)&cAddr,&sockLen))==-1)
+  {
+    perror("accept\n");
+    exit(-1);
+  }
+  printf("Somebody connected from %s:%d\n",inet_ntoa(cAddr.sin_addr), ntohs(cAddr.sin_port));
+  if((i=recv(connectionSock,str,100,0))==0)
+  {
+    perror("recv");
+    close(connectionSock);
+    close(serverSock);
+    exit(-1);
+  }
+  str[i]='\0';
+  printf("I received %d character: \"%s\"\n",i,str);
+  printf("Your Answer ");
+  gets(str);
+  send(connectionSock,str,strlen(str),0);
+  close(connectionSock);
+  close(serverSock);
+  return 0;
+}

@@ -1,0 +1,95 @@
+#include "commWrapper.h"
+#include "functions01.h"
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <signal.h>
+
+void sigHandler();
+
+void checkArgs(int argc, char* argv []);
+void doServerTask(int sock);
+void* returnWaitingThreadEntry(void* arg);
+void* workerThreadEntry(void* arg);
+
+int serverSock;
+
+int main (int argc, char* argv [])
+{
+  int sockConnection, port;
+  char str[128];
+  pthread_t idThread;
+  
+  checkArgs(argc, argv);
+  sscanf(argv[2],"%d", &port);
+  signal(SIGINT,sigHandler);
+  if(initServerSocket(&serverSock, argv[1], port)!=0)
+  {
+    sprintf(str,"I can't use %s:%d\n",argv[1],port);
+    perror(str);
+    return -1;
+  }
+  //pthread_create(&idThread, NULL, returnWaitingThreadEntry, (void *) &serverSock);
+  while(waitConexion(serverSock,&sockConnection)!=-1)
+  {
+    pthread_create(&idThread, NULL, workerThreadEntry, (void *) &sockConnection);
+  }
+  //pthread_join(idThread, NULL);
+  return 0;
+}
+
+void doServerTask(int sock)
+{
+  MESSAGE msg;
+
+  while(-1 != waitMessage(sock, &msg))
+  {
+    switch(msg.type)
+    {
+      case GCD: sendAnswer(sock,gcd(msg.param1,msg.param2));
+                break;
+      case LCM: sendAnswer(sock,lcm(msg.param1,msg.param2));
+                break;
+    }
+  }
+  close(sock);
+}
+
+void* workerThreadEntry(void* arg)
+{
+  int sock=* (int *) arg;
+
+  doServerTask(sock);
+}
+
+void* returnWaitingThreadEntry(void* arg)
+{
+  char str[128];
+  int serverSock=* (int *) arg;
+
+  printf("type \"Return\" to finish ....");
+  fgets(str,128,stdin);
+  //gets(str);
+  close(serverSock);
+  printf("-------------------\n");
+}
+
+void checkArgs(int argc, char* argv [])
+{
+  if(argc!=3)
+  {
+    printf("invocation error in program invocation. Correct format:\n ");
+    printf("%s <serverIP> <serverPort>\n ", argv[0]);
+    exit(-1);
+  }
+}
+
+void sigHandler()
+{
+ signal(SIGINT,SIG_IGN);
+ printf("xxxxxxxxxxxxxxxxxxxxx\n");
+ close(serverSock);
+ signal(SIGINT,sigHandler);
+}

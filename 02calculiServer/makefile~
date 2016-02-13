@@ -1,0 +1,19 @@
+.PHONY: all clean cleanAll
+
+all: 01client 02server
+
+01client: 01calculiClient.c commWrapper.c
+	gcc $^ -o $@
+
+01client: commWrapper.h
+
+02server: 02calculiServer.c commWrapper.c functions01.c
+	gcc $^ -lpthread -o $@
+
+02server: functions01.h commWrapper.h
+
+clean:
+	rm -f *.o
+
+cleanAll: clean
+	rm -f 01client 02server
